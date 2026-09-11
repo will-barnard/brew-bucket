@@ -1,0 +1,6 @@
+{
+  "public_service": "frontend",
+  "public_port": 80,
+  "health_check": "/healthz",
+  "stateful_services": ["postgres"]
+}

@@ -1,0 +1,17 @@
+# Runs on the NAS, not on Beachhead. Deployed by scripts/nas-deploy.sh.
+services:
+  storage-node:
+    image: brew-bucket-node:${BREW_BUCKET_TAG:-latest}
+    container_name: brew-bucket-node
+    restart: unless-stopped
+    environment:
+      PORT: 8477
+      DATA_DIR: /data
+      NODE_SHARED_SECRET: ${NODE_SHARED_SECRET:?set NODE_SHARED_SECRET in .env}
+      DIRECT_URL_SECRET: ${DIRECT_URL_SECRET:-}
+      DIRECT_ENABLED: ${DIRECT_ENABLED:-true}
+    volumes:
+      - ${STORAGE_PATH:?set STORAGE_PATH in .env}:/data
+    ports:
+      # Bound to the LAN only. This must never be forwarded at the router.
+      - "${BIND_ADDRESS:-0.0.0.0}:${HOST_PORT:-8477}:8477"

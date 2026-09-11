@@ -1,0 +1,9 @@
+{
+  "name": "brew-bucket-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.js",
+  "scripts": { "start": "node src/index.js" },
+  "dependencies": { "express": "^4.19.2" }
+}

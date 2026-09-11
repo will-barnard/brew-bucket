@@ -1,0 +1,66 @@
+# Control plane only. This runs on the mini via Beachhead and holds metadata,
+# never object bytes — those live on the storage node (see node/ and scripts/).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: brewbucket
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: brewbucket
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+      NODE_SHARED_SECRET: ${NODE_SHARED_SECRET}
+      DIRECT_URL_SECRET: ${DIRECT_URL_SECRET}
+      PUBLIC_URL: ${PUBLIC_URL}
+      MAX_OBJECT_BYTES: ${MAX_OBJECT_BYTES}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      BREW_BUCKET_GIT: ${BREW_BUCKET_GIT}
+    expose:
+      - "3001"
+    networks: [internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks: [internal]
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    name: brew-bucket-postgres
+
+networks:
+  internal:
