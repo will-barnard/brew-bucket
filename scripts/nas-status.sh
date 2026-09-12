@@ -8,12 +8,12 @@ say "containers"
 nas "cd '$NAS_APP_DIR' && $COMPOSE_CMD ps" || true
 
 say "health"
-nas "wget -qO- http://127.0.0.1:${HOST_PORT:-8477}/healthz" || warn "no response on :${HOST_PORT:-8477}"
+nas_fetch "http://127.0.0.1:${HOST_PORT:-8477}/healthz" || warn "no response on :${HOST_PORT:-8477}"
 echo
 
 say "capacity (requires NODE_SHARED_SECRET)"
 if [ -n "${NODE_SHARED_SECRET:-}" ]; then
-  nas "wget -qO- --header='x-node-secret: $NODE_SHARED_SECRET' http://127.0.0.1:${HOST_PORT:-8477}/stat" || true
+  nas_fetch_auth "http://127.0.0.1:${HOST_PORT:-8477}/stat" "$NODE_SHARED_SECRET" || true
   echo
 fi
 

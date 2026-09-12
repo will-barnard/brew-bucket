@@ -57,14 +57,19 @@ router.post('/:id/check', async (req, res, next) => {
   try {
     const node = await nodes.get(Number(req.params.id));
     if (!node) throw Object.assign(new Error('node not found'), { status: 404 });
-    const stat = await nodes.stat(node);
+    // Short timeout: this is a person waiting on a button, not a transfer.
+    const stat = await nodes.stat(node, { timeout: 8000 });
     await db.query(
       `UPDATE nodes SET last_seen_at = now(), agent_version = $2, disk_total = $3, disk_free = $4, last_error = NULL WHERE id = $1`,
       [node.id, stat.version || null, stat.disk_total || null, stat.disk_free || null]
     );
     res.json({ ok: true, stat });
   } catch (err) {
-    res.status(502).json({ ok: false, error: err.message });
+    // Record it too, so the reason survives on the node card rather than
+    // living only in a toast the user is about to navigate away from.
+    await db.query('UPDATE nodes SET last_error = $2 WHERE id = $1',
+      [Number(req.params.id), err.message]).catch(() => {});
+    res.status(502).json({ ok: false, error: err.message, code: err.code || null });
   }
 });
 

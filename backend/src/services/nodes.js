@@ -8,13 +8,14 @@ const config = require('../config');
 // raw streams: the control plane must never buffer an object in memory, or a
 // 40 GB backup takes the mini down with it.
 
-function request(node, { method, path, headers = {}, body = null, stream = false }) {
+function request(node, options) {
+  const { method, path, headers = {}, body = null, stream = false } = options;
   const url = new URL(path, node.internal_url);
   const mod = url.protocol === 'https:' ? https : http;
   const opts = {
     method,
     headers: { ...headers, 'x-node-secret': config.nodeSecret },
-    timeout: config.nodeTimeoutMs,
+    timeout: options.timeout || config.nodeTimeoutMs,
   };
 
   return new Promise((resolve, reject) => {
@@ -51,8 +52,15 @@ function request(node, { method, path, headers = {}, body = null, stream = false
         resolve(parsed);
       });
     });
-    req.on('timeout', () => req.destroy(new Error('node timeout')));
-    req.on('error', reject);
+    req.on('timeout', () => req.destroy(Object.assign(
+      new Error(`no response from ${url.host} within ${opts.timeout}ms`), { code: 'ETIMEDOUT' })));
+    req.on('error', (err) => {
+      // err.code is the useful part: ECONNREFUSED means something answered and
+      // said no, EHOSTUNREACH/ETIMEDOUT means nothing answered at all, and the
+      // two have completely different fixes.
+      err.message = err.code ? `${err.code} connecting to ${url.host}` : err.message;
+      reject(err);
+    });
     if (body && typeof body.pipe === 'function') {
       body.on('error', (e) => req.destroy(e));
       body.pipe(req);
@@ -83,8 +91,8 @@ async function deleteBlob(node, hash) {
   return request(node, { method: 'DELETE', path: `/blobs/${hash}` });
 }
 
-async function stat(node) {
-  return request(node, { method: 'GET', path: '/stat' });
+async function stat(node, { timeout } = {}) {
+  return request(node, { method: 'GET', path: '/stat', timeout });
 }
 
 async function verifyBlob(node, hash) {

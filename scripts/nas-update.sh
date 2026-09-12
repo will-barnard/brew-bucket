@@ -19,7 +19,7 @@ say "recreating the container"
 nas "cd '$NAS_APP_DIR' && $COMPOSE_CMD up -d --force-recreate"
 
 sleep 3
-if nas "wget -qO- http://127.0.0.1:${HOST_PORT:-8477}/healthz" 2>/dev/null | grep -q '"ok":true'; then
+if nas_fetch "http://127.0.0.1:${HOST_PORT:-8477}/healthz" 2>/dev/null | grep -q '"ok":true'; then
   say "updated to $IMAGE_TAG and healthy"
 else
   warn "container recreated but not healthy yet — ./scripts/nas-logs.sh"

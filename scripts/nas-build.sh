@@ -4,8 +4,11 @@
 # Mac building natively would produce an arm64 image the NAS silently cannot run.
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 load_env
-
-PLATFORM="${BUILD_PLATFORM:-linux/amd64}"
+# Normally exported by preflight in the calling script. Run standalone, this
+# probes the NAS itself and falls back to amd64 if it cannot be reached, so a
+# build never depends on the NAS being awake.
+resolve_platform
+PLATFORM="$BUILD_PLATFORM"
 
 say "building $IMAGE_NAME:$IMAGE_TAG for $PLATFORM"
 run docker build \

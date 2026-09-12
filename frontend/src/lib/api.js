@@ -10,10 +10,18 @@ async function call(method, path, body, opts = {}) {
   });
   const text = await res.text();
   let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+  let isJson = true;
+  try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; isJson = false; }
   if (!res.ok) {
-    const err = new Error((data && data.error) || `HTTP ${res.status}`);
+    // A non-JSON body means the app never answered — a proxy or gateway did.
+    // Collapsing that to "HTTP 502" hides the one fact worth knowing.
+    const message = (data && data.error)
+      || (!isJson && res.status >= 500
+            ? `HTTP ${res.status} from the proxy — the backend did not respond (check its container logs)`
+            : `HTTP ${res.status}`);
+    const err = new Error(message);
     err.status = res.status;
+    err.isJson = isJson;
     throw err;
   }
   return data;
